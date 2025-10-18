@@ -86,8 +86,16 @@ async function displayGames(gamesData) {
 
     // STEP 2: Verify each lobby with game-info and apply filters
     const matchingGames = [];
+    let gameIndex = 0;
     for (const gameId of candidateGames) {
         if (matchingGames.length >= 3) break; // Limit to 3 results
+
+        gameIndex++;
+        // Update status to show which game is being checked
+        const statusDiv = gamesContainer.querySelector('div');
+        if (statusDiv) {
+            statusDiv.textContent = `checking game ${gameIndex}/${candidateGames.length}`;
+        }
 
         const detailedInfo = await fetchGameInfo(gameId);
 
@@ -227,7 +235,7 @@ document.addEventListener('keydown', async function (event) {
         }
 
         if (gamesContainer) {
-            gamesContainer.innerHTML = '<div style="padding:20px;color:#4dabf7;text-align:center;">Loading...</div>';
+            gamesContainer.innerHTML = '<div style="padding:20px;color:#4dabf7;text-align:center;">fetching games from game-list</div>';
         }
 
         // Fetch and display data
