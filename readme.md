@@ -9,7 +9,7 @@ This script adds a small interface to display and join **Krunker.io** lobbies.
 - Press **F2** to refresh and show the current lobbies.  
 
 ## How to Use
-1. Copy or include `matchmaker.js` in your userscripts folder.  
+1. Copy `matchmaker.js` in your userscripts folder.  
 2. Press **F2** while on the Krunker main page to load available games.  
 3. Click **Join** to enter a game lobby.  
 
