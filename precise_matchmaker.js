@@ -1,5 +1,3 @@
-// THE MATCHMAKER IS UPDATED EVERY 10 SECONDS
-
 const default_region = localStorage.getItem("kro_setngss_defaultRegion")
 
 function formatTime(seconds) {
