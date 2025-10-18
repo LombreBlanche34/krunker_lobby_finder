@@ -1,4 +1,6 @@
 const default_region = localStorage.getItem("kro_setngss_defaultRegion")
+const favMap = ["Sandstorm", "Evacuation", "Industry", "Undergrowth", "site"];
+
 
 function formatTime(seconds) {
     const minutes = Math.floor(seconds / 60);
@@ -20,6 +22,8 @@ async function fetchGameInfo(gameId) {
 
 // Function to create and display available games
 async function displayGames(gamesData) {
+
+
     // Check if the container already exists
     let gamesContainer = document.querySelector("#customGameContainer");
     if (!gamesContainer) {
@@ -76,7 +80,7 @@ async function displayGames(gamesData) {
             gameDetails.c === 0 &&
             gameDetails.g === 0 &&
             timeLeft > 140
-            ) {
+        ) {
 
             candidateGames.push(gameId);
         }
@@ -124,7 +128,15 @@ async function displayGames(gamesData) {
 
     // STEP 3: Display the lobbies that match
     matchingGames.forEach((gameData, index) => {
-        const { gameId, region, currentPlayers, maxPlayers, gameDetails, tempsRestant } = gameData;
+
+        const {
+            gameId,
+            region,
+            currentPlayers,
+            maxPlayers,
+            gameDetails,
+            tempsRestant
+        } = gameData;
 
         const gameBox = document.createElement('div');
         gameBox.style.padding = '12px';
@@ -145,6 +157,7 @@ async function displayGames(gamesData) {
 
         const mapName = gameDetails.i || 'Unknown';
         const hostName = gameDetails.h || mapName;
+        const mapNameColor = favMap.includes(mapName) ? "#6aff00ff" : "#a5a5a5";
 
         gameBox.innerHTML = `
             <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
@@ -153,7 +166,7 @@ async function displayGames(gamesData) {
             </div>
             <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
                 <span style="color: #f7b538;">⏱️ ${formatTime(tempsRestant)}</span>
-                <span style="color: #a5a5a5;">${mapName}</span>
+                <span style="color: ${mapNameColor};">${mapName}</span>
             </div>
         `;
 
