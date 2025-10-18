@@ -1,15 +1,19 @@
+// THE MATCHMAKER IS UPDATED EVERY 10 SECONDS
+
+const default_region = localStorage.getItem("kro_setngss_defaultRegion")
+
 function formatTime(seconds) {
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = seconds % 60;
-  return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
 }
 
-// Fonction pour créer et afficher les jeux
+// Function to create and display available games
 function displayGames(gamesData) {
-    // Vérifier que la boîte existe déjà
+    // Check if the container already exists
     let gamesContainer = document.querySelector("#customGameContainer");
     if (!gamesContainer) {
-        // Créer la boîte si elle n'existe pas
+        // Create the container if it doesn't exist
         gamesContainer = document.createElement('div');
         gamesContainer.id = 'customGameContainer';
         gamesContainer.style.position = 'absolute';
@@ -25,26 +29,26 @@ function displayGames(gamesData) {
         gamesContainer.style.boxShadow = '0 0 15px rgba(0, 0, 0, 0.5)';
         gamesContainer.style.zIndex = '1000';
 
-        // Trouver l'élément sous lequel insérer la boîte
+        // Insert the container below the match info element
         const matchInfoHolder = document.querySelector("#matchInfoHolder");
         if (matchInfoHolder) {
             matchInfoHolder.parentNode.insertBefore(gamesContainer, matchInfoHolder.nextSibling);
         } else {
-            console.error("Élement #matchInfoHolder non trouvé");
+            log("Element #matchInfoHolder not found");
             return;
         }
     } else {
         gamesContainer.innerHTML = ''; // Clear previous content
     }
 
-    // Ajouter un titre
+    // Add title
     const title = document.createElement('div');
     title.style.fontSize = '18px';
     title.style.marginBottom = '15px';
     title.style.color = '#fff';
     title.style.textAlign = 'center';
     title.style.fontWeight = 'bold';
-    title.textContent = 'Games disponibles (FRA)';
+    title.textContent = `Available Games (${default_region})`;
     gamesContainer.appendChild(title);
 
     let gameCount = 0;
@@ -55,16 +59,19 @@ function displayGames(gamesData) {
 
     gamesData.games.forEach((game) => {
         const [gameId, region, currentPlayers, maxPlayers, gameDetails, tempsRestant] = game;
-        
+
         if (gameDetails &&
             gameDetails.c === 0 &&
-            region.includes('fra') &&
+
+            // REMOVE THE REGION LINE IF U WANT TO SEARCH ON EVERY REGION
+            region === default_region &&
+            // REMOVE THE REGION LINE IF U WANT TO SEARCH ON EVERY REGION
+
             tempsRestant > 140 &&
             currentPlayers >= 4 &&
             currentPlayers <= 7 &&
             maxPlayers === 8 &&
             gameDetails.g === 0) {
-            log(game)
             if (gameCount >= 3) return;
 
             const gameBox = document.createElement('div');
@@ -86,7 +93,7 @@ function displayGames(gamesData) {
 
             gameBox.innerHTML = `
                 <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                    <span style="color: #4dabf7;">🎯 Jeu FRA ${gameCount + 1}</span>
+                    <span style="color: #4dabf7;">🎯 Lobby ${region} ${gameCount + 1}</span>
                     <span style="color: #8cc265;">${currentPlayers}/${maxPlayers}</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
@@ -115,9 +122,8 @@ function displayGames(gamesData) {
             });
 
             joinButton.addEventListener('click', () => {
-                // Logique pour rejoindre le jeu
-                window.location.href = `https://krunker.io/?game=${gameId}`
-                // Vous pouvez remplacer l'alert par la vraie logique de connexion
+                // Logic to join the game
+                window.location.href = `https://krunker.io/?game=${gameId}`;
             });
 
             gameBox.appendChild(joinButton);
@@ -131,66 +137,49 @@ function displayGames(gamesData) {
         noGames.style.padding = '20px';
         noGames.style.color = '#999';
         noGames.style.textAlign = 'center';
-        noGames.textContent = 'Aucun jeu correspondant trouvé';
+        noGames.textContent = 'No matching games found';
         gameList.appendChild(noGames);
     }
 
     gamesContainer.appendChild(gameList);
 }
 
-// Fonction pour récupérer les jeux
+// Function to fetch game data
 async function fetchKrunkerGames() {
     try {
         const response = await fetch('https://matchmaker.krunker.io/game-list?hostname=krunker.io');
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         return await response.json();
     } catch (error) {
-        console.error('Erreur lors du fetch:', error);
+        log('Error during fetch:', error);
         throw error;
     }
 }
 
-// Gestionnaire d'événement pour la touche F2
-let refreshTimeout;
-document.addEventListener('keydown', async function(event) {
+document.addEventListener('keydown', async function (event) {
     if (event.key === 'F2') {
-        // Annuler le timeout précédent s'il existe
-        if (refreshTimeout) {
-            clearTimeout(refreshTimeout);
-        }
-
-        // Afficher un indicateur de chargement
+        // Show loading indicator
         const gamesContainer = document.querySelector("#customGameContainer");
         if (gamesContainer) {
-            gamesContainer.innerHTML = '<div style="padding:20px;color:#4dabf7;text-align:center;">Chargement en cours...</div>';
+            gamesContainer.innerHTML = '<div style="padding:20px;color:#4dabf7;text-align:center;">Loading...</div>';
         }
 
-        // Récupérer et afficher les données
+        // Fetch and display data
         try {
             const data = await fetchKrunkerGames();
-            log("cest get")
             if (data && data.games) {
-                log("j'ai des data")
                 displayGames(data);
             }
         } catch (error) {
-            console.error('Erreur:', error);
+            log('Error:', error);
             if (gamesContainer) {
-                gamesContainer.innerHTML = '<div style="padding:20px;color:#ff4444;text-align:center;">Erreur de chargement</div>';
+                gamesContainer.innerHTML = '<div style="padding:20px;color:#ff4444;text-align:center;">Loading error</div>';
             }
         }
-
-        // Programmer un rafraîchissement automatique après 30 secondes
-        refreshTimeout = setTimeout(() => {
-            // Ne pas rafraîchir si la boîte n'est pas visible
-            if (document.querySelector("#customGameContainer").style.display !== 'none') {
-                document.dispatchEvent(new KeyboardEvent('keydown', {'key': 'F2'}));
-            }
-        }, 10000);
     }
 });
 
-// Fonction pour masquer la boîte
+// Function to hide the game container
 function hideGameContainer() {
     const gamesContainer = document.querySelector("#customGameContainer");
     if (gamesContainer) {
@@ -198,7 +187,7 @@ function hideGameContainer() {
     }
 }
 
-// Fonction pour afficher la boîte
+// Function to show the game container
 function showGameContainer() {
     const gamesContainer = document.querySelector("#customGameContainer");
     if (gamesContainer) {
@@ -206,10 +195,9 @@ function showGameContainer() {
     }
 }
 
-// Écouter les événements de clic sur le bouton "Join"
-document.addEventListener('click', function(e) {
+// Hide the container after clicking "Join"
+document.addEventListener('click', function (e) {
     if (e.target && e.target.classList.contains('buttonPI') && e.target.textContent === 'Join') {
-        // Masquer la boîte après avoir cliqué sur Join
         hideGameContainer();
     }
 });
