@@ -1,3 +1,5 @@
+// THE MATCHMAKER IS UPDATED EVERY 10 SECONDS
+
 const default_region = localStorage.getItem("kro_setngss_defaultRegion")
 
 function formatTime(seconds) {
@@ -69,12 +71,14 @@ async function displayGames(gamesData) {
     // STEP 1: Filter with game-list (region, c === 0, g === 0)
     const candidateGames = [];
     for (const game of gamesData.games) {
-        const [gameId, region, currentPlayers, maxPlayers, gameDetails] = game;
+        const [gameId, region, currentPlayers, maxPlayers, gameDetails, timeLeft] = game;
 
         if (gameDetails &&
             region === default_region &&
             gameDetails.c === 0 &&
-            gameDetails.g === 0) {
+            gameDetails.g === 0 &&
+            timeLeft > 140
+            ) {
 
             candidateGames.push(gameId);
         }
