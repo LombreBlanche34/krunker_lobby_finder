@@ -11,7 +11,7 @@ Two lightweight userscripts to browse and join **Krunker.io** lobbies directly f
 - Near-instant loading
 - Perfect for quick matchmaking
 
-### precise_matchmaker.js – Accurate & Reliable
+### precise_matchmaker.js – Accurate & Reliable NOW COMPATIBLE WITH https://github.com/LombreBlanche34/krunker_scripts_settings
 - Real-time data directly from servers
 - **Avoids "game is full" errors**
 - Takes slightly longer but guarantees joinable lobbies
