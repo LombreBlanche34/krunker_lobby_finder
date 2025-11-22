@@ -1,6 +1,48 @@
-const default_region = localStorage.getItem("kro_setngss_defaultRegion");
-const favMap = ["Sandstorm", "Evacuation", "Industry", "Undergrowth", "site"];
+// Configuration par défaut
+const defaults = {
+    lombre_precise_matchmaker_status: true,
+    lombre_precise_matchmaker_region: "de-fra",
+    lombre_precise_matchmaker_min_players: 4,
+    lombre_precise_matchmaker_max_players: 7,
+    lombre_precise_matchmaker_min_time: 140,
+    lombre_precise_matchmaker_max_results: 3,
+    lombre_precise_matchmaker_fav_maps: JSON.stringify(["Sandstorm", "Evacuation", "Industry", "Undergrowth", "site"]),
+    lombre_precise_matchmaker_auto_join_fav: true
+};
 
+// Initialize localStorage if values don't exist
+Object.keys(defaults).forEach(key => {
+    if (localStorage.getItem(key) === null) {
+        localStorage.setItem(key, defaults[key]);
+        console.log(`[LombreScripts] [matchmaker.js] ${key} created with default value: ${defaults[key]}`);
+    }
+});
+
+// Check if script is enabled
+const scriptStatus = localStorage.getItem('lombre_precise_matchmaker_status');
+const isEnabled = scriptStatus === 'true' || scriptStatus === true;
+
+if (!isEnabled) {
+    console.log("[LombreScripts] [matchmaker.js] Script is disabled (lombre_precise_matchmaker_status = false)");
+    return; // Exit script
+}
+
+console.log("[LombreScripts] [matchmaker.js] Script is enabled");
+
+// Load configuration
+const config = {
+    REGION: localStorage.getItem('lombre_precise_matchmaker_region') || defaults.lombre_precise_matchmaker_region,
+    MIN_PLAYERS: parseInt(localStorage.getItem('lombre_precise_matchmaker_min_players')),
+    MAX_PLAYERS: parseInt(localStorage.getItem('lombre_precise_matchmaker_max_players')),
+    MIN_TIME: parseInt(localStorage.getItem('lombre_precise_matchmaker_min_time')),
+    MAX_RESULTS: parseInt(localStorage.getItem('lombre_precise_matchmaker_max_results')),
+    FAV_MAPS: JSON.parse(localStorage.getItem('lombre_precise_matchmaker_fav_maps')),
+    AUTO_JOIN_FAV: localStorage.getItem('lombre_precise_matchmaker_auto_join_fav') === 'true'
+};
+
+console.log(`[LombreScripts] [matchmaker.js] Configuration loaded`, config);
+
+// Utility functions
 function formatTime(seconds) {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
@@ -13,8 +55,33 @@ async function fetchGameInfo(gameId) {
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         return await response.json();
     } catch (error) {
-        console.log('Error fetching game info:', error);
+        console.log('[LombreScripts] [matchmaker.js] Error fetching game info:', error);
         return null;
+    }
+}
+
+async function fetchKrunkerGames() {
+    try {
+        const response = await fetch('https://matchmaker.krunker.io/game-list?hostname=krunker.io');
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        return await response.json();
+    } catch (error) {
+        console.log('[LombreScripts] [matchmaker.js] Error during fetch:', error);
+        throw error;
+    }
+}
+
+function hideGameContainer() {
+    const gamesContainer = document.querySelector("#customGameContainer");
+    if (gamesContainer) {
+        gamesContainer.style.display = 'none';
+    }
+}
+
+function showGameContainer() {
+    const gamesContainer = document.querySelector("#customGameContainer");
+    if (gamesContainer) {
+        gamesContainer.style.display = 'block';
     }
 }
 
@@ -37,8 +104,6 @@ async function displayGames(gamesData) {
         gamesContainer.style.boxShadow = '0 0 15px rgba(0, 0, 0, 0.5)';
         gamesContainer.style.zIndex = '1000';
         gamesContainer.style.display = 'block';
-
-        // Add to body directly
         document.body.appendChild(gamesContainer);
     } else {
         gamesContainer.innerHTML = '';
@@ -52,7 +117,7 @@ async function displayGames(gamesData) {
     title.style.color = '#fff';
     title.style.textAlign = 'center';
     title.style.fontWeight = 'bold';
-    title.textContent = `Available Games (${default_region})`;
+    title.textContent = `Available Games (${config.REGION})`;
     gamesContainer.appendChild(title);
 
     const gameList = document.createElement('div');
@@ -64,32 +129,46 @@ async function displayGames(gamesData) {
     const candidateGames = gamesData.games.filter(game => {
         const [, region, , , gameDetails, timeLeft] = game;
         return gameDetails &&
-               region === default_region &&
+               region === config.REGION &&
                gameDetails.c === 0 &&
                gameDetails.g === 0 &&
-               timeLeft > 140;
+               timeLeft > config.MIN_TIME;
     }).map(game => game[0]);
 
-    console.log(`Found ${candidateGames.length} candidate games from game-list`);
+    console.log(`[LombreScripts] [matchmaker.js] Found ${candidateGames.length} candidate games from game-list`);
+
+    // Status div for checking progress
+    const statusDiv = document.createElement('div');
+    statusDiv.style.padding = '20px';
+    statusDiv.style.color = '#4dabf7';
+    statusDiv.style.textAlign = 'center';
+    statusDiv.textContent = 'Checking games...';
+    gamesContainer.appendChild(statusDiv);
 
     // Verify each lobby
     const matchingGames = [];
-    for (let i = 0; i < candidateGames.length && matchingGames.length < 3; i++) {
+    for (let i = 0; i < candidateGames.length && matchingGames.length < config.MAX_RESULTS; i++) {
         const gameId = candidateGames[i];
-        const statusDiv = gamesContainer.querySelector('div');
-        if (statusDiv) {
-            statusDiv.textContent = `Checking game ${i+1}/${candidateGames.length}`;
-        }
+        statusDiv.textContent = `Checking game ${i+1}/${candidateGames.length}`;
 
         const detailedInfo = await fetchGameInfo(gameId);
         if (detailedInfo) {
             const [, , currentPlayers, , , tempsRestant] = detailedInfo;
-            if (tempsRestant > 140 && currentPlayers >= 4 && currentPlayers <= 7) {
-                console.log(`✅ Match found: ${detailedInfo[0]} - Players: ${currentPlayers}/${detailedInfo[3]} - Time: ${tempsRestant}s`);
+            const actualGame = window.location.href;
+            const currentGameId = actualGame.includes('?game=') ? actualGame.split('=')[1].split('&')[0] : null;
+            
+            if (tempsRestant > config.MIN_TIME && 
+                currentPlayers >= config.MIN_PLAYERS && 
+                currentPlayers <= config.MAX_PLAYERS && 
+                gameId !== currentGameId) {
+                console.log(`[LombreScripts] [matchmaker.js] ✅ Match found: ${detailedInfo[0]} - Players: ${currentPlayers}/${detailedInfo[3]} - Time: ${tempsRestant}s`);
                 matchingGames.push(detailedInfo);
             }
         }
     }
+
+    // Remove status div
+    statusDiv.remove();
 
     // Display results
     if (matchingGames.length > 0) {
@@ -97,7 +176,15 @@ async function displayGames(gamesData) {
             const [gameId, , currentPlayers, maxPlayers, gameDetails, tempsRestant] = gameData;
             const mapName = gameDetails.i || 'Unknown';
             const hostName = gameDetails.h || mapName;
-            const mapNameColor = favMap.includes(mapName) ? "#6aff00ff" : "#a5a5a5";
+            const isFavMap = config.FAV_MAPS.includes(mapName);
+            const mapNameColor = isFavMap ? "#6aff00ff" : "#a5a5a5";
+            
+            // Auto-join favorite maps if enabled
+            if (isFavMap && config.AUTO_JOIN_FAV) {
+                console.log(`[LombreScripts] [matchmaker.js] Auto-joining favorite map: ${mapName}`);
+                window.location.href = `https://krunker.io/?game=${gameId}`;
+                return;
+            }
 
             const gameBox = document.createElement('div');
             gameBox.style.padding = '12px';
@@ -138,6 +225,7 @@ async function displayGames(gamesData) {
             });
 
             joinButton.addEventListener('click', () => {
+                console.log(`[LombreScripts] [matchmaker.js] Joining game: ${gameId}`);
                 window.location.href = `https://krunker.io/?game=${gameId}`;
                 hideGameContainer();
             });
@@ -157,28 +245,18 @@ async function displayGames(gamesData) {
     gamesContainer.appendChild(gameList);
 }
 
-async function fetchKrunkerGames() {
-    try {
-        const response = await fetch('https://matchmaker.krunker.io/game-list?hostname=krunker.io');
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        return await response.json();
-    } catch (error) {
-        console.log('Error during fetch:', error);
-        throw error;
-    }
-}
-
+// Event listeners
 document.addEventListener('keydown', async function (event) {
     if (event.key === 'F2') {
         let gamesContainer = document.querySelector("#customGameContainer");
-        
-        // If the container exists and is visible, hide it
+
+        // Toggle visibility if container exists and is visible
         if (gamesContainer && gamesContainer.style.display !== 'none') {
             hideGameContainer();
             return;
         }
-        
-        // Otherwise, create or display and load the data
+
+        // Create container if it doesn't exist
         if (!gamesContainer) {
             gamesContainer = document.createElement('div');
             gamesContainer.id = 'customGameContainer';
@@ -208,73 +286,44 @@ document.addEventListener('keydown', async function (event) {
                 await displayGames(data);
             }
         } catch (error) {
-            console.log('Error:', error);
+            console.log('[LombreScripts] [matchmaker.js] Error:', error);
             gamesContainer.innerHTML = '<div style="padding:20px;color:#ff4444;text-align:center;">Loading error</div>';
         }
-    }
-});
-
-function hideGameContainer() {
-    const gamesContainer = document.querySelector("#customGameContainer");
-    if (gamesContainer) {
-        gamesContainer.style.display = 'none';
-    }
-}
-
-function showGameContainer() {
-    const gamesContainer = document.querySelector("#customGameContainer");
-    if (gamesContainer) {
-        gamesContainer.style.display = 'block';
-    }
-}
-
-// Hide when clicking join button
-document.addEventListener('click', function(e) {
-    if (e.target && e.target.classList.contains('buttonPI') && e.target.textContent === 'Join') {
-        hideGameContainer();
     }
 });
 
 // Hide when clicking outside the container
 document.addEventListener('click', function(e) {
     const gamesContainer = document.querySelector("#customGameContainer");
-    
     if (gamesContainer && gamesContainer.style.display !== 'none') {
-        // Check if the click is outside the container
         if (!gamesContainer.contains(e.target)) {
             hideGameContainer();
         }
     }
 });
 
-// Variable to store the last known class
+// Monitor UI state
 let lastKnownClass = '';
 
-// Function to check uiBase state
 function checkUiBaseState() {
     const uiBase = document.querySelector("#uiBase");
     const gamesContainer = document.querySelector("#customGameContainer");
-    
+
     if (uiBase && gamesContainer) {
         const currentClass = uiBase.className;
-        
-        // Check if the class has changed
+
         if (currentClass !== lastKnownClass) {
             lastKnownClass = currentClass;
-            
-            if (currentClass.includes("onMenu")) {
-                // Don't automatically show, just allow display
-            } else if (currentClass.includes("onGame")) {
+
+            if (currentClass.includes("onGame")) {
                 gamesContainer.style.display = 'none';
-            } else {
+            } else if (!currentClass.includes("onMenu")) {
                 gamesContainer.style.display = 'none';
             }
         }
     }
 }
 
-// Start periodic checking (every 100ms)
 setInterval(checkUiBaseState, 100);
 
-// Initial log to confirm script is loaded
-console.log("[Matchmaker] Script loaded - UI state verification enabled");
+console.log("[LombreScripts] [matchmaker.js] Script loaded - UI state verification enabled");
