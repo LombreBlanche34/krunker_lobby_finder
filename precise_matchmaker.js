@@ -1,4 +1,4 @@
-// Configuration par défaut
+// Default configuration
 const defaults = {
     lombre_precise_matchmaker_status: true,
     lombre_precise_matchmaker_region: "de-fra",
@@ -6,7 +6,7 @@ const defaults = {
     lombre_precise_matchmaker_max_players: 7,
     lombre_precise_matchmaker_min_time: 140,
     lombre_precise_matchmaker_max_results: 3,
-    lombre_precise_matchmaker_fav_maps: JSON.stringify(["Sandstorm", "Evacuation", "Industry", "Undergrowth", "site"]),
+    lombre_precise_matchmaker_fav_maps: JSON.stringify(["Sandstorm", "Evacuation", "Industry", "Undergrowth", "Site"]),
     lombre_precise_matchmaker_auto_join_fav: true
 };
 
@@ -129,10 +129,10 @@ async function displayGames(gamesData) {
     const candidateGames = gamesData.games.filter(game => {
         const [, region, , , gameDetails, timeLeft] = game;
         return gameDetails &&
-               region === config.REGION &&
-               gameDetails.c === 0 &&
-               gameDetails.g === 0 &&
-               timeLeft > config.MIN_TIME;
+            region === config.REGION &&
+            gameDetails.c === 0 &&
+            gameDetails.g === 0 &&
+            timeLeft > config.MIN_TIME;
     }).map(game => game[0]);
 
     console.log(`[LombreScripts] [matchmaker.js] Found ${candidateGames.length} candidate games from game-list`);
@@ -147,7 +147,7 @@ async function displayGames(gamesData) {
 
     // Verify each lobby
     const matchingGames = [];
-    for (let i = 0; i < candidateGames.length && matchingGames.length < config.MAX_RESULTS; i++) {
+    for (let i = 0; i < candidateGames.length; i++) {
         const gameId = candidateGames[i];
         statusDiv.textContent = `Checking game ${i+1}/${candidateGames.length}`;
 
@@ -156,13 +156,25 @@ async function displayGames(gamesData) {
             const [, , currentPlayers, , , tempsRestant] = detailedInfo;
             const actualGame = window.location.href;
             const currentGameId = actualGame.includes('?game=') ? actualGame.split('=')[1].split('&')[0] : null;
-            
-            if (tempsRestant > config.MIN_TIME && 
-                currentPlayers >= config.MIN_PLAYERS && 
-                currentPlayers <= config.MAX_PLAYERS && 
+
+            if (tempsRestant > config.MIN_TIME &&
+                currentPlayers >= config.MIN_PLAYERS &&
+                currentPlayers <= config.MAX_PLAYERS &&
                 gameId !== currentGameId) {
                 console.log(`[LombreScripts] [matchmaker.js] ✅ Match found: ${detailedInfo[0]} - Players: ${currentPlayers}/${detailedInfo[3]} - Time: ${tempsRestant}s`);
+
+                const gameDetails = detailedInfo[4];
+                const mapName = gameDetails.i || 'Unknown';
+                const isFavMap = config.FAV_MAPS.includes(mapName);
+
+                if (isFavMap && config.AUTO_JOIN_FAV) {
+                    console.log(`[LombreScripts] [matchmaker.js] Auto-joining favorite map: ${mapName}`);
+                    window.location.href = `https://krunker.io/?game=${gameId}`;
+                    return; // Exit the function immediately after joining
+                }
+
                 matchingGames.push(detailedInfo);
+                if (matchingGames.length >= config.MAX_RESULTS) break;
             }
         }
     }
@@ -170,7 +182,7 @@ async function displayGames(gamesData) {
     // Remove status div
     statusDiv.remove();
 
-    // Display results
+    // Display results if no auto-join happened
     if (matchingGames.length > 0) {
         matchingGames.forEach(gameData => {
             const [gameId, , currentPlayers, maxPlayers, gameDetails, tempsRestant] = gameData;
@@ -178,13 +190,6 @@ async function displayGames(gamesData) {
             const hostName = gameDetails.h || mapName;
             const isFavMap = config.FAV_MAPS.includes(mapName);
             const mapNameColor = isFavMap ? "#6aff00ff" : "#a5a5a5";
-            
-            // Auto-join favorite maps if enabled
-            if (isFavMap && config.AUTO_JOIN_FAV) {
-                console.log(`[LombreScripts] [matchmaker.js] Auto-joining favorite map: ${mapName}`);
-                window.location.href = `https://krunker.io/?game=${gameId}`;
-                return;
-            }
 
             const gameBox = document.createElement('div');
             gameBox.style.padding = '12px';
@@ -293,7 +298,7 @@ document.addEventListener('keydown', async function (event) {
 });
 
 // Hide when clicking outside the container
-document.addEventListener('click', function(e) {
+document.addEventListener('click', function (e) {
     const gamesContainer = document.querySelector("#customGameContainer");
     if (gamesContainer && gamesContainer.style.display !== 'none') {
         if (!gamesContainer.contains(e.target)) {
