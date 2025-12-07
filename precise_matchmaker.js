@@ -30,14 +30,17 @@ window.addEventListener("load", () => {
 // 
 // ====================
 
-const VERSION = "1.0.0";
+const VERSION = "1.0.1";
 localStorage.setItem("lombre_precise_matchmaker_version", VERSION)
+
+if (localStorage.getItem("lombre_precise_matchmaker_region")) {
+    localStorage.removeItem("lombre_precise_matchmaker_region")
+}
 
 
 // Default configuration
 const defaults = {
     lombre_precise_matchmaker_status: true,
-    lombre_precise_matchmaker_region: "de-fra",
     lombre_precise_matchmaker_min_players: 4,
     lombre_precise_matchmaker_max_players: 7,
     lombre_precise_matchmaker_min_time: 140,
@@ -81,7 +84,7 @@ console.log("[LombreScripts] [matchmaker.js] Script is enabled");
 
 // Load configuration
 const config = {
-    REGION: localStorage.getItem('lombre_precise_matchmaker_region') || defaults.lombre_precise_matchmaker_region,
+    REGION: localStorage.getItem('kro_setngss_defaultRegion'),
     MIN_PLAYERS: parseInt(localStorage.getItem('lombre_precise_matchmaker_min_players')),
     MAX_PLAYERS: parseInt(localStorage.getItem('lombre_precise_matchmaker_max_players')),
     MIN_TIME: parseInt(localStorage.getItem('lombre_precise_matchmaker_min_time')),
