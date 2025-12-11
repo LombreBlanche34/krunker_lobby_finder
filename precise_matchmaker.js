@@ -30,16 +30,12 @@ window.addEventListener("load", () => {
 // 
 // ====================
 
-const VERSION = "1.0.1";
+const VERSION = "1.0.2";
 localStorage.setItem("lombre_precise_matchmaker_version", VERSION)
-
-if (localStorage.getItem("lombre_precise_matchmaker_region")) {
-    localStorage.removeItem("lombre_precise_matchmaker_region")
-}
-
 
 // Default configuration
 const defaults = {
+    lombre_precise_matchmaker_all_region: false,
     lombre_precise_matchmaker_status: true,
     lombre_precise_matchmaker_min_players: 4,
     lombre_precise_matchmaker_max_players: 7,
@@ -60,7 +56,7 @@ Object.keys(defaults).forEach(key => {
 });
 
 async function checkForUpdate() {
-    const response = await fetch(GITHUB_VERSION_URL);
+    const response = await fetch("https://raw.githubusercontent.com/LombreBlanche34/krunker_lobby_finder/refs/heads/main/version");
     const githubResult = (await response.text())
     const latestVersion = githubResult.split(";")[0]
     if (latestVersion !== VERSION) {
@@ -84,6 +80,7 @@ console.log("[LombreScripts] [matchmaker.js] Script is enabled");
 
 // Load configuration
 const config = {
+    ALL_REGION: localStorage.getItem("lombre_precise_matchmaker_all_region"),
     REGION: localStorage.getItem('kro_setngss_defaultRegion'),
     MIN_PLAYERS: parseInt(localStorage.getItem('lombre_precise_matchmaker_min_players')),
     MAX_PLAYERS: parseInt(localStorage.getItem('lombre_precise_matchmaker_max_players')),
@@ -170,7 +167,7 @@ async function displayGames(gamesData) {
     title.style.color = '#fff';
     title.style.textAlign = 'center';
     title.style.fontWeight = 'bold';
-    title.textContent = `Available Games (${config.REGION})`;
+    title.textContent = `Available Games (${config.ALL_REGION === true || config.ALL_REGION === 'true' ? 'ALL REGIONS' : config.REGION})`;
     gamesContainer.appendChild(title);
 
     const gameList = document.createElement('div');
@@ -182,7 +179,7 @@ async function displayGames(gamesData) {
     const candidateGames = gamesData.games.filter(game => {
         const [, region, , , gameDetails, timeLeft] = game;
         return gameDetails &&
-            region === config.REGION &&
+            (config.ALL_REGION === true || config.ALL_REGION === 'true' || region === config.REGION) &&
             gameDetails.c === 0 &&
             gameDetails.g === 0 &&
             timeLeft > config.MIN_TIME;
@@ -238,7 +235,7 @@ async function displayGames(gamesData) {
     // Display results if no auto-join happened
     if (matchingGames.length > 0) {
         matchingGames.forEach(gameData => {
-            const [gameId, , currentPlayers, maxPlayers, gameDetails, tempsRestant] = gameData;
+            const [gameId, region, currentPlayers, maxPlayers, gameDetails, tempsRestant] = gameData;
             const mapName = gameDetails.i || 'Unknown';
             const hostName = gameDetails.h || mapName;
             const isFavMap = config.FAV_MAPS.includes(mapName);
@@ -254,7 +251,7 @@ async function displayGames(gamesData) {
 
             gameBox.innerHTML = `
                 <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                    <span style="color: #4dabf7;">🎯 ${hostName}</span>
+                    <span style="color: #4dabf7;">🎯 ${hostName} | ${region}</span>
                     <span style="color: #8cc265;">${currentPlayers}/${maxPlayers}</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
